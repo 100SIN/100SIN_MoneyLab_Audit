@@ -1,0 +1,197 @@
+# =============================================================================
+# LATEST_DIFF.patch  (CURATED & REDACTED — 외부 검수용)
+# -----------------------------------------------------------------------------
+# 주의: 이 파일은 git이 그대로 생성한 원본 diff가 아니라, 검수를 위해 정제·마스킹한
+#       버전입니다. 다음 원칙에 따라 편집되었습니다.
+#   * 금융 DNA 96문항 전문, 16개 유형 프로필 원문, 4축 채점 Matrix(가중치)는
+#     [REDACTED] 로 대체하고 변경 목적만 설명합니다. (독점 데이터 비공개)
+#   * 이번 "결과 저장·공유" 작업과 무관하고 이번에 변경되지 않은 부분은
+#     [UNCHANGED — elided for focus] 로 생략합니다. (비밀정보 아님)
+#   * 이번 작업은 초기 앱 커밋(c30e1c2) 안에 함께 포함되어 배포되었으므로,
+#     아래는 "결과 저장·공유 기능" 변경분만 추린 것입니다.
+#   * 아래에는 환경변수/토큰/비밀번호/API 키/개인정보/인증정보가 포함되지 않습니다.
+# =============================================================================
+
+
+diff --git a/web/src/lib/financialDna.ts b/web/src/lib/financialDna.ts
+--- a/web/src/lib/financialDna.ts
++++ b/web/src/lib/financialDna.ts
+@@ 파일 개요 @@
+ // 96문항 · 12 Factor · 16유형 금융 DNA 데이터 및 채점 로직.
+ //
+ // [REDACTED] — QUESTIONS(96문항 원문), TYPES(16개 유형 프로필 원문),
+ //              scoreFactor / computeResult 내부의 4축 채점 Matrix 및 가중치는
+ //              독점 데이터로 본 검수 저장소에서 제외함.
+ //              (이번 작업에서 이 부분은 변경되지 않음 — 채점 로직 무변경)
+
+@@ computeResult() 내부 — 종합점수 계산 추가 @@
+   const type = TYPES.find((t) => t.code === code) ?? TYPES[0];
++
++  const compositeScore = Math.round(
++    ((Object.values(factorScores).reduce((a, b) => a + b, 0) / FACTORS.length - 1) / 4) * 100,
++  );
++
+   return {
+     code,
+     type,
+     factorScores,
+     axisScores: { strategy: strategyScore, risk: riskScore, trust: trustScore, motive: motiveScore },
++    compositeScore,
+   };
+ }
+
+@@ 신규: 답변 인코딩/디코딩 (URL 저장·공유 핵심) @@
++// 답변을 URL에 담을 수 있는 96자리 문자열로 인코딩/디코딩한다.
++// 문항 id(1~96)는 셔플과 무관하게 항상 고정이므로, 링크를 통해
++// 새로고침·공유해도 항상 동일한 결과가 재현된다. 서버 저장소 없이도
++// "결과 저장·공유"를 만족시키기 위한 선택.
++export function encodeAnswers(answers: Record<number, number>): string | null {
++  let out = "";
++  for (const qu of QUESTIONS) {
++    const value = answers[qu.id];
++    if (!value || value < 1 || value > 5) return null;
++    out += String(value);
++  }
++  return out;
++}
++
++export function decodeAnswers(code: string): Record<number, number> | null {
++  if (!/^[1-5]{96}$/.test(code)) return null;   // 형식·길이·범위 검증 → 잘못된 값은 null
++  const answers: Record<number, number> = {};
++  QUESTIONS.forEach((qu, i) => {
++    answers[qu.id] = Number(code[i]);
++  });
++  return answers;
++}
+#
+# 설명: encodeAnswers/decodeAnswers 는 채점 가중치를 전혀 노출하지 않는다.
+#       단지 "답변 1~5" 배열을 URL 문자열로 왕복 변환할 뿐이며, 정규식
+#       /^[1-5]{96}$/ 로 형식·길이·범위를 검증해 잘못된 파라미터를 차단한다.
+
+
+diff --git a/web/src/components/FinancialDnaQuiz.tsx b/web/src/components/FinancialDnaQuiz.tsx
+--- a/web/src/components/FinancialDnaQuiz.tsx
++++ b/web/src/components/FinancialDnaQuiz.tsx
+@@ import 및 훅 @@
+ "use client";
+ import { useMemo, useState } from "react";
++import { useRouter, useSearchParams } from "next/navigation";
+ import Link from "next/link";
+-import { QUESTIONS, LIKERT_LABELS, FACTORS, AXES, computeResult, shuffleQuestions, Question } from "@/lib/financialDna";
++import {
++  QUESTIONS, LIKERT_LABELS, FACTORS, AXES, computeResult, shuffleQuestions,
++  encodeAnswers, decodeAnswers, Question,
++} from "@/lib/financialDna";
+
+@@ URL 파라미터로부터 결과 복원 @@
+ export default function FinancialDnaQuiz() {
++  const router = useRouter();
++  const searchParams = useSearchParams();
++
++  const restoredAnswers = useMemo(() => {
++    const code = searchParams.get("r");
++    return code ? decodeAnswers(code) : null;
++  }, [searchParams]);
++
+-  const [step, setStep] = useState<Step>("intro");
++  const [step, setStep] = useState<Step>(restoredAnswers ? "result" : "intro");
+-  const [answers, setAnswers] = useState<Record<number, number>>({});
++  const [answers, setAnswers] = useState<Record<number, number>>(restoredAnswers ?? {});
++  const [copied, setCopied] = useState(false);
+
+@@ 결과 도달 시 URL에 반영 / 재시작 시 초기화 @@
+   function goNext() {
+     if (page === TOTAL_PAGES - 1) {
++      const code = encodeAnswers(answers);
++      if (code) router.replace(`/financial-dna?r=${code}`, { scroll: false });
+       setStep("result");
+     } else {
+       setPage((p) => p + 1);
+     }
+   }
+
+   function restart() {
++    router.replace("/financial-dna", { scroll: false });
+     setAnswers({});
+     setPage(0);
+     setStep("intro");
+   }
+
+@@ 신규: 결과 링크 클립보드 복사 @@
++  async function copyLink() {
++    await navigator.clipboard.writeText(window.location.href);
++    setCopied(true);
++    setTimeout(() => setCopied(false), 2000);
++  }
+
+@@ 결과 화면 — "결과 링크 복사하기" 버튼 추가 @@
+         <div className="flex flex-wrap gap-3">
++          <button
++            type="button"
++            onClick={copyLink}
++            className="rounded-full border border-black/10 px-6 py-3 text-sm font-medium dark:border-white/10"
++          >
++            {copied ? "링크 복사됨 ✓" : "결과 링크 복사하기"}
++          </button>
+           <button type="button" onClick={restart} ...>다시 검사하기</button>
+           <Link href="/#contact" ...>상담 신청하기 →</Link>
+         </div>
+#
+# [UNCHANGED — elided for focus]
+#   문항 렌더링(Likert 5단계 버튼), 진행률 표시, 페이지네이션, 이전/다음,
+#   4축·12 Factor 점수 바, 강점/약점/실수/전략 카드 등 결과 표시 UI는
+#   이번 작업에서 변경되지 않았으며 비밀정보를 포함하지 않음.
+#   (문항 원문 문자열은 이 컴포넌트에 하드코딩되어 있지 않고, 런타임에
+#    financialDna.ts 의 QUESTIONS 로부터 주입되어 렌더됨.)
+
+
+diff --git a/web/src/app/financial-dna/page.tsx b/web/src/app/financial-dna/page.tsx
+--- a/web/src/app/financial-dna/page.tsx
++++ b/web/src/app/financial-dna/page.tsx
+@@ 신규: 공유 링크용 동적 메타데이터 + Suspense 래핑 @@
++import { Suspense } from "react";
++import type { Metadata } from "next";
+ import FinancialDnaQuiz from "@/components/FinancialDnaQuiz";
++import { decodeAnswers, computeResult } from "@/lib/financialDna";
++
++export async function generateMetadata({
++  searchParams,
++}: {
++  searchParams: Promise<{ r?: string }>;
++}): Promise<Metadata> {
++  const { r } = await searchParams;
++  const answers = r ? decodeAnswers(r) : null;
++
++  if (!answers) {
++    return {
++      title: "금융 DNA 테스트 | 100SIN Money Lab",
++      description: "96개 질문으로 12가지 금융 성향 지표를 측정하고, 16가지 금융 DNA 유형 중 나에게 맞는 유형과 재테크 전략을 찾습니다.",
++    };
++  }
++
++  const { type } = computeResult(answers);
++  return {
++    title: `나의 금융 DNA는 ${type.name} | 100SIN Money Lab`,
++    description: `${type.tagline} — 96개 질문으로 진단한 나의 금융 DNA 결과를 확인해보세요.`,
++  };
++}
+
+ export default function FinancialDnaPage() {
+   return (
+     <div className="mx-auto max-w-3xl px-6">
+       ... (히어로 섹션 — UNCHANGED) ...
+       <div className="pb-24">
+-        <FinancialDnaQuiz />
++        <Suspense fallback={null}>
++          <FinancialDnaQuiz />
++        </Suspense>
+       </div>
+     </div>
+   );
+ }
+#
+# 설명: generateMetadata 는 공유 링크의 <title>을 결과 유형명으로 바꿔
+#       카카오톡/SNS 미리보기 품질을 높인다. useSearchParams 사용에 따라
+#       클라이언트 컴포넌트를 <Suspense> 로 감쌌다.
+
+# ===== END OF CURATED PATCH =====
