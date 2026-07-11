@@ -1,38 +1,55 @@
 # TEST_RESULTS.md
 
 - 대상: https://web-kappa-indol-69.vercel.app/financial-dna (프로덕션)
-- 검증 방식: 로컬 빌드 도구 + Playwright(Chromium) 자동화로 공개 프로덕션 URL을 실제 구동
-- 프로덕션 커밋: `c30e1c2267863a6fda6ea04e9d139dcc82fdf0a6`
+- 검증: 로컬 빌드 도구 + Playwright(Chromium) 자동화로 공개 프로덕션 URL 실제 구동
+- 프로덕션 커밋: `be77755311d8b9d0f46f3928b1b090fd54e1e04f`
 
-| # | 항목 | 결과 | 근거 |
-|---|------|------|------|
-| 1 | type-check (`tsc --noEmit`) | ✅ 통과 | exit 0, 오류 0 |
-| 2 | lint (`eslint`) | ✅ 통과 | 경고·오류 0 |
-| 3 | production build (`next build`) | ✅ 통과 | 8/8 페이지 생성, `financial-dna`는 동적 렌더링(ƒ) — 공유 링크별 메타데이터 생성을 위해 의도된 전환 |
-| 4 | 브라우저 완주 테스트 | ✅ 통과 | 96문항 전체 응답 → 결과 산출(탐험가형/Explorer, IGFP, 종합점수 48) |
-| 5 | 모바일 테스트 | ✅ 통과 | 390px 뷰포트에서 결과 전체 정상 렌더링, 12 Factor 점수 데스크톱과 동일 (SCREENSHOTS/03_mobile_result.png) |
-| 6 | 콘솔 오류 | ✅ 0건 | Playwright `console`/`pageerror` 리스너 수집 결과 0건 |
-| 7 | 네트워크 오류 | ✅ HTTP 4xx·5xx 0건 | Playwright `response` status ≥400 = 0건. 별도로 잡힌 `requestfailed` 5건은 전부 Next.js RSC 프리페치(`?_rsc=`)가 페이지 이동/컨텍스트 종료 시 취소(ERR_ABORTED)된 것으로 실제 오류 아님 |
-| 8 | 회귀 테스트 | ✅ 통과 | 채점 로직·문항·유형·디자인 미변경. 문항 랜덤화·미응답 검증·이전(뒤로가기) 상태 보존 등 기존 기능 정상 |
-| 9 | 잘못된 URL 예외 처리 | ✅ 통과 | `?r=abc`(형식 오류), 95자리(1자 잘림), 범위 밖 값(`9`·`0` 포함) 3종 모두 크래시 없이 인트로로 안전 폴백 |
-| 10 | 공유 링크 복원 테스트 | ✅ 통과 | 결과 링크를 **새 클린 컨텍스트**에서 열었을 때 유형·종합점수·4축·12 Factor 점수·리포트가 원본과 100% 일치. 새로고침 후에도 유지 (SCREENSHOTS/05_shared_restore_desktop.png) |
+## 로컬 정적 검증
+| 항목 | 결과 |
+|---|---|
+| type-check (`tsc --noEmit`) | ✅ 통과 |
+| lint (`eslint`) | ✅ 통과 |
+| production build (`next build`) | ✅ 통과 (`financial-dna` 동적 렌더 ƒ — 서버 복호화/메타데이터 위해 의도) |
+| 암호화 단위테스트 | ✅ 왕복·결과동일·변조/잘림/과길이(4000+)/빈값 모두 null 방어·원본답변 미포함 |
+| 클라이언트 번들 유출 검사 | ✅ SHARE_SECRET 값·복호화 로직 클라이언트/서버 산출물에 미포함 (빌드 grep) |
 
-## 원본 결과 = 공유 결과 동일성 (채점 무결성 간접 검증)
-- 유형 코드: `IGFP` (원본 = 공유)
-- 유형명: 탐험가형 (Explorer)
-- 종합점수: 48
-- 12 Factor: 계획성 28 · 금융지식 41 · 안전 28 · 기회 47 · 통제 47 · 성장 75 · 자유 72 · 가족 53 · 성취 56 · 현재 59 · 신뢰 19 · 위험 50
-- 4축: 전략축 직관형 · 위험축 성장형 · 신뢰축 자유형 · 동기축 관계현재형
-→ 동일 URL이 항상 동일 결과를 재현하므로, 인코딩/디코딩이 채점 입력을 무손실 보존함이 확인됨.
+## 프로덕션 E2E (Playwright, 13개 시나리오)
+| # | 항목 | 결과 |
+|---|---|---|
+| 1 | 신규 공유 링크 생성(`?s=`) | ✅ |
+| 2 | 불투명 토큰(약 300~318자 base64url) | ✅ |
+| 3 | URL에서 원본 96개 답변 식별 불가(96자리 연속 없음) | ✅ |
+| 4 | 결과 링크 복사 → 클립보드 = 공유 URL | ✅ |
+| 5 | 새 브라우저 세션에서 동일 결과 복원(전체 결과 텍스트 100% 일치) | ✅ |
+| 6 | 새로고침 후 결과 유지 | ✅ |
+| 7 | 토큰 변조 → 결과 미표시, 인트로 폴백 | ✅ |
+| 8 | 잘린 토큰 → 인트로 폴백 | ✅ |
+| 9 | 잘못된 문자 토큰 → 인트로 폴백 | ✅ |
+| 10 | 레거시 `?r=<96자리>` 하위 호환 복원 | ✅ |
+| 11 | 다시 검사하기 → URL·결과 초기화 | ✅ |
+| 12 | 클립보드 권한 거부 → 수동 복사 안내 폴백 | ✅ |
+| 13 | 모바일 뷰포트 복원 동일 + 복사 버튼 노출 | ✅ |
+| — | 콘솔 오류 | ✅ 0건 |
+| — | HTTP 4xx·5xx 오류 | ✅ 0건 |
+| — | 회귀(채점·문항·디자인 미변경, 랜덤화·미응답검증·뒤로가기 정상) | ✅ |
+
+## 버전 저장 확인
+- 토큰 payload에 `qv`(questionnaireVersion="1")·`sv`(scoringVersion="1")·포맷버전·생성시각 포함(로컬 왕복 테스트로 복호 후 값 확인).
+- 렌더는 저장 스냅샷 사용 → 채점 변경 시에도 과거 결과 불변 설계.
+
+## Web Share / 클립보드
+- Web Share API 지원 기기: "공유하기" 버튼 노출(useSyncExternalStore로 navigator.share 감지, hydration 불일치 없음). Playwright 데스크톱/모바일 에뮬레이션엔 navigator.share가 없어 자동화에서는 **복사 폴백 경로**가 노출·검증됨(요구사항의 미지원 환경 동작과 일치).
+- 클립보드: `navigator.clipboard.writeText` → 실패 시 `execCommand('copy')` → 그래도 실패 시 수동 복사 입력창(스크린샷 06).
 
 ## 스크린샷 (SCREENSHOTS/)
-- `00_intro.png` — 테스트 인트로 (진입 화면)
-- `01_before_result_buttons.png` — **변경 전**(공유 버튼 제거 재현): "다시 검사하기"·"상담 신청하기"만 존재
-- `02_after_result_buttons.png` — **변경 후**: "결과 링크 복사하기" 버튼 추가
-- `03_mobile_result.png` — 모바일 결과 화면 (390px)
-- `04_result_desktop.png` — 데스크톱 결과 화면 전체
-- `05_shared_restore_desktop.png` — 공유 링크(`?r=`)로 클린 세션에서 복원한 결과 화면
+- `00_intro.png` 인트로
+- `01_result_desktop.png` 결과(데스크톱, 공유/복사 버튼)
+- `02_share_buttons.png` 버튼 영역 클로즈업
+- `03_shared_restore.png` 공유 링크로 새 세션 복원
+- `04_mobile_result.png` 모바일 결과
+- `05_tampered_fallback.png` 변조 토큰 → 인트로 폴백
+- `06_manual_copy_fallback.png` 클립보드 거부 → 수동 복사 안내(불투명 `?s=` URL 표시)
 
-## 비밀정보 탐지
-- 검수 자료 생성 후 자동 시크릿 스캔 수행 (AUDIT_MANIFEST.json의 `secretScanPassed` 참고).
-- 96문항 전문·전체 채점 Matrix·독점 가중치·토큰·키·개인정보는 본 저장소에 포함하지 않음.
+## 비밀정보 검사
+- 검수 자료 생성 후 자동 시크릿 스캔 수행(AUDIT_MANIFEST.json `secretScanPassed`).
+- 96문항 원문·채점 Matrix·독점 가중치·키·토큰·개인정보 미포함.

@@ -22,4 +22,4 @@
 ## 현재 배포
 
 - 프로덕션: https://web-kappa-indol-69.vercel.app/financial-dna
-- 프로덕션 커밋: `c30e1c2267863a6fda6ea04e9d139dcc82fdf0a6`
+- 프로덕션 커밋: `be77755311d8b9d0f46f3928b1b090fd54e1e04f`

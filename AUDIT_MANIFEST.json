@@ -1,29 +1,50 @@
 {
-  "task": "금융 DNA 결과 저장·공유 링크",
-  "generatedAt": "2026-07-11T03:06:02Z",
+  "task": "결과 공유 링크 출시 수준 안정화 (AES-GCM 암호화 토큰)",
+  "generatedAt": "2026-07-11T05:50:46Z",
   "mainRepo": "100SIN/100SIN_MoneyLab (private)",
-  "mainRepoCommit": "c30e1c2267863a6fda6ea04e9d139dcc82fdf0a6",
-  "changedFiles": 3,
+  "mainRepoCommit": "be77755311d8b9d0f46f3928b1b090fd54e1e04f",
+  "implementation": "server-encrypted-token (AES-256-GCM, stateless, key in env only)",
+  "changedFiles": 6,
   "changedFileList": [
+    "web/src/lib/shareToken.ts",
+    "web/src/app/financial-dna/actions.ts",
     "web/src/lib/financialDna.ts",
+    "web/src/app/financial-dna/page.tsx",
     "web/src/components/FinancialDnaQuiz.tsx",
-    "web/src/app/financial-dna/page.tsx"
+    "web/package.json"
   ],
   "deploymentUrl": "https://web-kappa-indol-69.vercel.app/financial-dna",
+  "questionnaireVersion": "1",
+  "scoringVersion": "1",
   "scoringLogicChanged": false,
+  "backwardCompatibleLegacyLinks": true,
   "qaPassed": true,
   "checks": {
     "typeCheck": "pass",
     "lint": "pass",
     "build": "pass",
-    "browserFullRun": "pass",
+    "cryptoUnitTest": "pass",
+    "clientBundleSecretLeak": "none",
+    "newShareLink": "pass",
+    "restoreNewSession": "pass",
+    "resultIdentical": "pass",
+    "answersNotIdentifiableInUrl": "pass",
+    "tamperDetection": "pass",
+    "truncatedTokenSafe": "pass",
+    "legacyLinkCompat": "pass",
+    "refreshRestore": "pass",
+    "restartReset": "pass",
+    "clipboardDenialFallback": "pass",
     "mobile": "pass",
     "consoleErrors": 0,
-    "networkHttpErrors": 0,
-    "regression": "pass",
-    "invalidUrlHandling": "pass",
-    "sharedLinkRestore": "pass"
+    "networkHttpErrors": 0
+  },
+  "privacy": {
+    "rawAnswersInUrl": false,
+    "rawAnswersSentToServer": false,
+    "personalDataStored": false,
+    "keyInClientBundle": false
   },
   "secretScanPassed": true,
-  "notes": "실제 서비스 전체 소스코드·96문항 전문·채점 Matrix·독점 가중치·인증정보는 본 공개 저장소에 포함하지 않음."
+  "notes": "실제 서비스 전체 소스코드는 미포함. 96문항 원문·채점 Matrix·독점 가중치·인증정보 미포함. 이번 커밋 diff에는 해당 민감정보가 존재하지 않아 [REDACTED] 없이 원본 공개."
 }
