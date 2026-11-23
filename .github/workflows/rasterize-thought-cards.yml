@@ -1,0 +1,57 @@
+name: Rasterize 100SIN Thought Cards
+on:
+  push:
+    paths:
+      - 'INSTAGRAM_ASSETS/baeksin-thoughts/*.svg'
+      - '.github/workflows/rasterize-thought-cards.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: thought-raster-main
+  cancel-in-progress: false
+
+jobs:
+  rasterize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout public asset repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Install Korean glyph fonts and SVG renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk librsvg2-bin python3-pil
+          fc-cache -f >/dev/null
+      - name: Convert card SVG into actual 1080x1350 JPEG
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import subprocess
+          import tempfile
+          folder=Path("INSTAGRAM_ASSETS/baeksin-thoughts")
+          for svg in sorted(folder.glob("[0-9][0-9][0-9]-01.svg")):
+              jpg=svg.with_suffix(".jpg")
+              with tempfile.NamedTemporaryFile(suffix=".png") as fp:
+                  subprocess.run(["rsvg-convert","--width","1080","--height","1350","-o",fp.name,str(svg)],check=True)
+                  im=Image.open(fp.name).convert("RGB")
+                  assert im.size == (1080, 1350), im.size
+                  im.save(jpg, "JPEG", quality=89, subsampling=0, optimize=True)
+              assert 1000 < jpg.stat().st_size < 8_000_000, jpg.stat().st_size
+              print(f"{svg} => {jpg} ({jpg.stat().st_size} bytes)")
+          PY
+      - name: Commit rendered JPEGs for direct public URLs
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add INSTAGRAM_ASSETS/baeksin-thoughts/*.jpg
+          if ! git diff --cached --quiet; then
+            git commit -m 'assets: render Korean-safe JPEG cards for scheduled publication'
+            git push origin HEAD:main
+          fi
