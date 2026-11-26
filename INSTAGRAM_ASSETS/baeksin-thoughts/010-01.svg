@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" aria-label="쉴 때까지 쓸모를 증명할 필요는 없습니다.">
+  <rect width="1080" height="1350" fill="#0D0D0E"/>
+  <g font-family="Noto Sans CJK KR, Noto Sans KR, sans-serif" fill="#F5F1E8">
+    <text x="90" y="100" font-size="30" font-weight="400" dominant-baseline="hanging">100SIN MONEY LAB · 백신 생각</text>
+    <path d="M90 166H990" stroke="#353536" stroke-width="2"/>
+    <g font-size="110" font-weight="700" dominant-baseline="central" text-anchor="start">
+      <text x="90" y="460">쉴 때까지</text>
+      <text x="90" y="604" fill="#C6FF39">쓸모를</text>
+      <text x="90" y="746">증명할 필요는</text>
+      <text x="90" y="890">없습니다.</text>
+    </g>
+  </g>
+</svg>
